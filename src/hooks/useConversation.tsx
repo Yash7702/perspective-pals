@@ -1,70 +1,36 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Persona, findPersonaById } from '@/data/personas';
-import { generateAIResponse, hasOpenAIKey } from '@/utils/openai';
+import { ConversationType, ConversationHistoryType, MessageType } from '@/types/conversation';
+import { createNewConversation, createNewMessage } from '@/utils/conversationUtils';
+import { loadConversationHistory, saveConversationHistory, saveConversation } from '@/services/conversationStorage';
+import { generatePersonaResponses } from '@/services/aiResponseService';
 
-export type MessageType = {
-  id: string;
-  content: string;
-  sender: 'user' | Persona;
-  timestamp: Date;
-};
-
-export type ConversationType = {
-  id: string;
-  title: string;
-  messages: MessageType[];
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export type ConversationHistoryType = {
-  [id: string]: ConversationType;
-};
-
-const generateId = () => Math.random().toString(36).substring(2, 9);
+export { MessageType, ConversationType, ConversationHistoryType } from '@/types/conversation';
 
 export const useConversation = (initialConversation?: ConversationType) => {
   const [conversation, setConversation] = useState<ConversationType>(
-    initialConversation || {
-      id: generateId(),
-      title: 'New Conversation',
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
+    initialConversation || createNewConversation()
   );
   
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPersonas, setSelectedPersonas] = useState<string[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ConversationHistoryType>(() => {
-    const saved = localStorage.getItem('conversationHistory');
-    return saved ? JSON.parse(saved) : {};
+    return loadConversationHistory();
   });
 
   useEffect(() => {
-    localStorage.setItem('conversationHistory', JSON.stringify(conversationHistory));
+    saveConversationHistory(conversationHistory);
   }, [conversationHistory]);
 
   useEffect(() => {
     if (conversation.id && conversation.messages.length > 0) {
-      setConversationHistory(prev => ({
-        ...prev,
-        [conversation.id]: {
-          ...conversation,
-          updatedAt: new Date()
-        }
-      }));
+      setConversationHistory(prev => saveConversation(conversation, prev));
     }
   }, [conversation]);
 
   const addMessage = useCallback((content: string, sender: 'user' | Persona) => {
-    const newMessage = {
-      id: generateId(),
-      content,
-      sender,
-      timestamp: new Date(),
-    };
+    const newMessage = createNewMessage(content, sender);
     
     setConversation(prev => ({
       ...prev,
@@ -78,69 +44,8 @@ export const useConversation = (initialConversation?: ConversationType) => {
   const generateAIResponses = useCallback(async (userMessage: string) => {
     setIsLoading(true);
     
-    // Check if OpenAI API key is set
-    if (!hasOpenAIKey()) {
-      addMessage(
-        "Error: OpenAI API key is not set. Please set your API key in the input field below.",
-        findPersonaById(selectedPersonas[0])
-      );
-      setIsLoading(false);
-      return;
-    }
-    
     try {
-      // Generate responses from selected personas
-      for (const personaId of selectedPersonas) {
-        const persona = findPersonaById(personaId);
-        
-        // Get context from previous messages by the same persona
-        const personaMessages = conversation.messages
-          .filter(msg => msg.sender !== 'user' && typeof msg.sender !== 'string' && msg.sender.id === personaId)
-          .slice(-3) // Last 3 messages from this persona
-          .map(msg => ({
-            role: 'assistant' as const,
-            content: msg.content
-          }));
-        
-        // Get last few user messages for context
-        const userMessages = conversation.messages
-          .filter(msg => msg.sender === 'user')
-          .slice(-3) // Last 3 user messages
-          .map(msg => ({
-            role: 'user' as const,
-            content: msg.content
-          }));
-        
-        // Combine for conversation history
-        const conversationContext = [...userMessages, ...personaMessages].sort((a, b) => {
-          const aIndex = conversation.messages.findIndex(msg => 
-            msg.content === a.content && 
-            ((a.role === 'user' && msg.sender === 'user') || 
-             (a.role === 'assistant' && msg.sender !== 'user'))
-          );
-          const bIndex = conversation.messages.findIndex(msg => 
-            msg.content === b.content && 
-            ((b.role === 'user' && msg.sender === 'user') || 
-             (b.role === 'assistant' && msg.sender !== 'user'))
-          );
-          return aIndex - bIndex;
-        });
-        
-        // Add a small delay to simulate natural conversation timing
-        if (selectedPersonas.indexOf(personaId) > 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-        }
-        
-        // Call the OpenAI API
-        const aiResponse = await generateAIResponse(persona, userMessage, conversationContext);
-        addMessage(aiResponse, persona);
-      }
-    } catch (error) {
-      console.error("Error generating AI responses:", error);
-      addMessage(
-        "Sorry, I encountered an error while generating responses. Please try again later.",
-        findPersonaById(selectedPersonas[0])
-      );
+      await generatePersonaResponses(userMessage, conversation, selectedPersonas, addMessage);
     } finally {
       setIsLoading(false);
     }
@@ -176,14 +81,7 @@ export const useConversation = (initialConversation?: ConversationType) => {
   }, []);
 
   const startNewConversation = useCallback(() => {
-    const newConversation = {
-      id: generateId(),
-      title: 'New Conversation',
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
+    const newConversation = createNewConversation();
     setConversation(newConversation);
     return newConversation;
   }, []);
