@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquare, History, Menu, X } from 'lucide-react';
+import { MessageSquare, History, Menu, X, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const Navbar = () => {
@@ -31,6 +30,7 @@ const Navbar = () => {
     { path: '/', label: 'Home', icon: null },
     { path: '/chat', label: 'New Chat', icon: MessageSquare },
     { path: '/history', label: 'History', icon: History },
+    { path: '/settings', label: 'Settings', icon: Settings },
   ];
 
   return (
