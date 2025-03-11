@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { KeyRound, Save, Check } from 'lucide-react';
+import { KeyRound, Save, Check, Edit, Eye, EyeOff } from 'lucide-react';
 import { setOpenAIKey, getOpenAIKey, hasOpenAIKey } from '@/utils/openai';
 import { useToast } from '@/hooks/use-toast';
 
@@ -10,20 +10,25 @@ const ApiKeyInput = () => {
   const [apiKey, setApiKey] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     // Check if API key is already set
-    setIsSaved(hasOpenAIKey());
+    const hasKey = hasOpenAIKey();
+    setIsSaved(hasKey);
     
-    // Get the key from storage for the input field
-    if (hasOpenAIKey()) {
+    // If key exists but we're not in editing mode, mask it
+    if (hasKey && !isEditing) {
+      setApiKey('•'.repeat(16)); // Mask the key with dots
+    } else if (hasKey && isEditing) {
+      // If we're editing, show the actual key
       setApiKey(getOpenAIKey());
     }
-  }, []);
+  }, [isEditing]);
 
   const handleSaveKey = () => {
-    if (!apiKey.trim()) {
+    if (!apiKey.trim() || apiKey === '•'.repeat(16)) {
       toast({
         title: "Error",
         description: "Please enter a valid API key",
@@ -34,12 +39,31 @@ const ApiKeyInput = () => {
 
     setOpenAIKey(apiKey.trim());
     setIsSaved(true);
+    setIsEditing(false);
     
     toast({
       title: "Success",
       description: "OpenAI API key saved successfully",
       variant: "default",
     });
+  };
+
+  const handleEditKey = () => {
+    setIsEditing(true);
+    if (hasOpenAIKey()) {
+      setApiKey(getOpenAIKey());
+    } else {
+      setApiKey('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (hasOpenAIKey()) {
+      setApiKey('•'.repeat(16));
+    } else {
+      setApiKey('');
+    }
   };
 
   return (
@@ -61,18 +85,36 @@ const ApiKeyInput = () => {
           onChange={(e) => setApiKey(e.target.value)}
           placeholder="Enter your OpenAI API key (sk-...)"
           className="flex-1"
+          readOnly={isSaved && !isEditing}
         />
-        <Button
-          variant="outline"
-          onClick={() => setIsVisible(!isVisible)}
-          className="px-3"
-        >
-          {isVisible ? "Hide" : "Show"}
-        </Button>
-        <Button onClick={handleSaveKey}>
-          {isSaved ? <Check className="mr-1" /> : <Save className="mr-1" />}
-          {isSaved ? "Saved" : "Save"}
-        </Button>
+        
+        {(isEditing || !isSaved) ? (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setIsVisible(!isVisible)}
+              className="px-3"
+            >
+              {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+            
+            <Button onClick={handleSaveKey}>
+              <Save className="mr-1 h-4 w-4" />
+              Save
+            </Button>
+            
+            {isEditing && (
+              <Button variant="outline" onClick={handleCancelEdit}>
+                Cancel
+              </Button>
+            )}
+          </>
+        ) : (
+          <Button onClick={handleEditKey}>
+            <Edit className="mr-1 h-4 w-4" />
+            Change Key
+          </Button>
+        )}
       </div>
       
       <p className="text-xs text-muted-foreground mt-2">
