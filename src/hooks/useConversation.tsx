@@ -6,7 +6,8 @@ import { createNewConversation, createNewMessage } from '@/utils/conversationUti
 import { loadConversationHistory, saveConversationHistory, saveConversation } from '@/services/conversationStorage';
 import { generatePersonaResponses } from '@/services/aiResponseService';
 
-export { MessageType, ConversationType, ConversationHistoryType } from '@/types/conversation';
+// Use export type for re-exporting types when isolatedModules is enabled
+export type { MessageType, ConversationType, ConversationHistoryType } from '@/types/conversation';
 
 export const useConversation = (initialConversation?: ConversationType) => {
   const [conversation, setConversation] = useState<ConversationType>(
