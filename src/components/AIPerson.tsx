@@ -71,6 +71,22 @@ const AIPerson = ({
         {(isHovered || isSelected) && (
           <span className="absolute inset-0 rounded-full bg-white/20" />
         )}
+        
+        {/* Thinking animation */}
+        {animate && (
+          <motion.span 
+            className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full"
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [1, 0.6, 1] 
+            }}
+            transition={{ 
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut" 
+            }}
+          />
+        )}
       </div>
       
       <div className="flex flex-col items-center">

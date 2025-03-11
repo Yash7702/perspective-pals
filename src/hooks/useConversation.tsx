@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Persona, findPersonaById } from '@/data/personas';
+import { generateAIResponse, hasOpenAIKey } from '@/utils/openai';
 
 export type MessageType = {
   id: string;
@@ -19,49 +20,6 @@ export type ConversationType = {
 
 export type ConversationHistoryType = {
   [id: string]: ConversationType;
-};
-
-const mockResponses = {
-  rational: [
-    "Based on the available facts, I must analyze this objectively. The evidence suggests that...",
-    "From a logical standpoint, we should consider the following factors...",
-    "The data points to several rational conclusions. First, we must consider...",
-    "Let's break this down systematically and examine each component...",
-    "When we analyze this situation objectively, the most reasonable approach would be..."
-  ],
-  empath: [
-    "I'm sensing that this situation has deep emotional implications. People might feel...",
-    "The human impact here cannot be overlooked. Many would experience...",
-    "This could be emotionally challenging for those involved because...",
-    "From a compassionate perspective, we need to consider how this affects...",
-    "The emotional wellbeing of everyone involved is paramount. Let's consider..."
-  ],
-  traditionalist: [
-    "Traditional wisdom offers clear guidance here. Our established principles suggest...",
-    "History has shown us that in similar situations, the proper approach is to...",
-    "The time-tested rules for handling this type of situation indicate that...",
-    "From a principled standpoint, there are certain standards we must uphold...",
-    "Our foundational values would guide us to approach this by..."
-  ],
-  freethinker: [
-    "What if we looked at this from an entirely new angle? Consider the possibility that...",
-    "The conventional approach might not be optimal here. Instead, we could explore...",
-    "Let's challenge our assumptions and consider some creative alternatives...",
-    "I see an opportunity for innovation here. What if we tried...",
-    "Breaking from tradition might yield better results. We could attempt..."
-  ],
-  strategist: [
-    "Let's focus on action and results. The most effective strategy would be to...",
-    "To achieve the optimal outcome, I recommend taking these decisive steps...",
-    "This situation calls for bold action. I suggest immediately...",
-    "Looking at the end goal, the most direct path to success is...",
-    "Let's not overthink this. The winning move is clearly to..."
-  ]
-};
-
-const getRandomResponse = (personaId: string) => {
-  const responses = mockResponses[personaId as keyof typeof mockResponses];
-  return responses[Math.floor(Math.random() * responses.length)];
 };
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -120,20 +78,72 @@ export const useConversation = (initialConversation?: ConversationType) => {
   const generateAIResponses = useCallback(async (userMessage: string) => {
     setIsLoading(true);
     
-    // Add a small delay to simulate AI thinking
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Generate responses from selected personas
-    for (const personaId of selectedPersonas) {
-      const delay = 800 + Math.random() * 1200; // Random delay between 800ms and 2000ms
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
-      const persona = findPersonaById(personaId);
-      const aiResponse = getRandomResponse(personaId);
-      addMessage(aiResponse, persona);
+    // Check if OpenAI API key is set
+    if (!hasOpenAIKey()) {
+      addMessage(
+        "Error: OpenAI API key is not set. Please set your API key in the input field below.",
+        findPersonaById(selectedPersonas[0])
+      );
+      setIsLoading(false);
+      return;
     }
     
-    setIsLoading(false);
+    try {
+      // Generate responses from selected personas
+      for (const personaId of selectedPersonas) {
+        const persona = findPersonaById(personaId);
+        
+        // Get context from previous messages by the same persona
+        const personaMessages = conversation.messages
+          .filter(msg => msg.sender !== 'user' && typeof msg.sender !== 'string' && msg.sender.id === personaId)
+          .slice(-3) // Last 3 messages from this persona
+          .map(msg => ({
+            role: 'assistant' as const,
+            content: msg.content
+          }));
+        
+        // Get last few user messages for context
+        const userMessages = conversation.messages
+          .filter(msg => msg.sender === 'user')
+          .slice(-3) // Last 3 user messages
+          .map(msg => ({
+            role: 'user' as const,
+            content: msg.content
+          }));
+        
+        // Combine for conversation history
+        const conversationContext = [...userMessages, ...personaMessages].sort((a, b) => {
+          const aIndex = conversation.messages.findIndex(msg => 
+            msg.content === a.content && 
+            ((a.role === 'user' && msg.sender === 'user') || 
+             (a.role === 'assistant' && msg.sender !== 'user'))
+          );
+          const bIndex = conversation.messages.findIndex(msg => 
+            msg.content === b.content && 
+            ((b.role === 'user' && msg.sender === 'user') || 
+             (b.role === 'assistant' && msg.sender !== 'user'))
+          );
+          return aIndex - bIndex;
+        });
+        
+        // Add a small delay to simulate natural conversation timing
+        if (selectedPersonas.indexOf(personaId) > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+        }
+        
+        // Call the OpenAI API
+        const aiResponse = await generateAIResponse(persona, userMessage, conversationContext);
+        addMessage(aiResponse, persona);
+      }
+    } catch (error) {
+      console.error("Error generating AI responses:", error);
+      addMessage(
+        "Sorry, I encountered an error while generating responses. Please try again later.",
+        findPersonaById(selectedPersonas[0])
+      );
+    } finally {
+      setIsLoading(false);
+    }
     
     // Update conversation title if it's the first message
     if (conversation.title === 'New Conversation' && userMessage.length > 0) {
@@ -143,7 +153,7 @@ export const useConversation = (initialConversation?: ConversationType) => {
         title: newTitle
       }));
     }
-  }, [addMessage, selectedPersonas, conversation.title]);
+  }, [addMessage, selectedPersonas, conversation]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || selectedPersonas.length === 0) return;

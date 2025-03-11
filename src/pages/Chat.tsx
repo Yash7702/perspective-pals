@@ -7,7 +7,9 @@ import { personas } from '@/data/personas';
 import AIPerson from '@/components/AIPerson';
 import Navbar from '@/components/Navbar';
 import ConversationBubble from '@/components/ConversationBubble';
+import ApiKeyInput from '@/components/ApiKeyInput';
 import { useConversation } from '@/hooks/useConversation';
+import { hasOpenAIKey } from '@/utils/openai';
 import { cn } from '@/lib/utils';
 
 const Chat = () => {
@@ -62,6 +64,9 @@ const Chat = () => {
 
       <main className="flex-1 flex flex-col pt-20 px-4 sm:px-6">
         <div className="max-w-5xl w-full mx-auto flex-1 flex flex-col">
+          {/* API Key Input */}
+          {!hasOpenAIKey() && <ApiKeyInput />}
+
           {/* Persona Selection */}
           <div className="py-6 border-b">
             <h2 className="text-lg font-medium mb-3">Choose perspectives:</h2>
