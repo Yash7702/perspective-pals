@@ -1,7 +1,6 @@
 
 import { Helmet } from 'react-helmet';
 import { Layout } from '@/components/Layout';
-import ApiKeyInput from '@/components/ApiKeyInput';
 import HuggingFaceKeyInput from '@/components/HuggingFaceKeyInput';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -93,7 +92,6 @@ const Settings = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <ApiKeyInput />
                 <HuggingFaceKeyInput />
               </CardContent>
             </Card>

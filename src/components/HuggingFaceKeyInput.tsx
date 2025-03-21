@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Brain, Save, Check, Edit, Eye, EyeOff } from 'lucide-react';
+import { Brain, Save, Edit, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getHuggingFaceKey, setHuggingFaceKey } from '@/utils/huggingface';
 
 const HuggingFaceKeyInput = () => {
   const [apiKey, setApiKey] = useState('');
@@ -14,7 +15,7 @@ const HuggingFaceKeyInput = () => {
 
   useEffect(() => {
     // Check if API key is already set
-    const hasKey = localStorage.getItem('huggingface_api_key') !== null;
+    const hasKey = getHuggingFaceKey() !== '';
     setIsSaved(hasKey);
     
     // If key exists but we're not in editing mode, mask it
@@ -22,10 +23,7 @@ const HuggingFaceKeyInput = () => {
       setApiKey('•'.repeat(16)); // Mask the key with dots
     } else if (hasKey && isEditing) {
       // If we're editing, show the actual key
-      setApiKey(localStorage.getItem('huggingface_api_key') || '');
-    } else if (!hasKey) {
-      // If no key exists yet, set the provided key
-      setApiKey("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");
+      setApiKey(getHuggingFaceKey());
     }
   }, [isEditing]);
 
@@ -39,7 +37,7 @@ const HuggingFaceKeyInput = () => {
       return;
     }
 
-    localStorage.setItem('huggingface_api_key', apiKey.trim());
+    setHuggingFaceKey(apiKey.trim());
     setIsSaved(true);
     setIsEditing(false);
     
@@ -52,7 +50,7 @@ const HuggingFaceKeyInput = () => {
 
   const handleEditKey = () => {
     setIsEditing(true);
-    const savedKey = localStorage.getItem('huggingface_api_key');
+    const savedKey = getHuggingFaceKey();
     if (savedKey) {
       setApiKey(savedKey);
     } else {
@@ -62,8 +60,7 @@ const HuggingFaceKeyInput = () => {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    const savedKey = localStorage.getItem('huggingface_api_key');
-    if (savedKey) {
+    if (getHuggingFaceKey()) {
       setApiKey('•'.repeat(16));
     } else {
       setApiKey('');
@@ -121,7 +118,7 @@ const HuggingFaceKeyInput = () => {
       </div>
       
       <p className="text-xs text-muted-foreground mt-2">
-        Your API key is stored only in your browser's local storage and is never sent to our servers.
+        Your API key is stored securely in your browser's local storage and is never sent to our servers.
       </p>
     </div>
   );
