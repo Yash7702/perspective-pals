@@ -36,7 +36,7 @@ const PersonaSummary = () => {
           <TabsList className="flex overflow-x-auto mb-4 pb-1">
             {personas.map((persona) => (
               <TabsTrigger key={persona.id} value={persona.id} className="flex items-center gap-2">
-                <AIPerson persona={persona} size="xs" />
+                <AIPerson persona={persona} size="sm" />
                 <span>{persona.name}</span>
               </TabsTrigger>
             ))}
