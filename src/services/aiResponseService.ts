@@ -13,7 +13,7 @@ export const generatePersonaResponses = async (
   // Check if OpenAI API key is set
   if (!hasOpenAIKey()) {
     addMessage(
-      "Error: OpenAI API key is not set. Please set your API key in the input field below.",
+      "Error: OpenAI API key is not set. Please set your API key in the settings.",
       findPersonaById(selectedPersonas[0])
     );
     return;

@@ -42,11 +42,13 @@ export const useConversation = (initialConversation?: ConversationType) => {
     return newMessage;
   }, []);
 
-  const generateAIResponses = useCallback(async (userMessage: string) => {
+  const generateAIResponses = useCallback(async (userMessage: string, personaIds?: string[]) => {
     setIsLoading(true);
     
     try {
-      await generatePersonaResponses(userMessage, conversation, selectedPersonas, addMessage);
+      // Use either the provided personaIds or the selectedPersonas
+      const personas = personaIds || selectedPersonas;
+      await generatePersonaResponses(userMessage, conversation, personas, addMessage);
     } finally {
       setIsLoading(false);
     }
@@ -61,14 +63,17 @@ export const useConversation = (initialConversation?: ConversationType) => {
     }
   }, [addMessage, selectedPersonas, conversation]);
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || selectedPersonas.length === 0) return;
+  const sendMessage = useCallback(async (content: string, specificPersonas?: string[]) => {
+    if (!content.trim()) return;
+    
+    // For normal messages, require at least one selected persona
+    if (!specificPersonas && selectedPersonas.length === 0) return;
     
     // Add user message
     addMessage(content, 'user');
     
-    // Generate AI responses
-    await generateAIResponses(content);
+    // Generate AI responses (either from all selected personas or specific ones)
+    await generateAIResponses(content, specificPersonas);
   }, [addMessage, generateAIResponses, selectedPersonas]);
 
   const togglePersona = useCallback((personaId: string) => {

@@ -8,6 +8,7 @@ import AIPerson from '@/components/AIPerson';
 import Navbar from '@/components/Navbar';
 import ConversationBubble from '@/components/ConversationBubble';
 import ApiKeyInput from '@/components/ApiKeyInput';
+import PersonaSummary from '@/components/PersonaSummary';
 import { useConversation } from '@/hooks/useConversation';
 import { hasOpenAIKey } from '@/utils/openai';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,12 @@ const Chat = () => {
     }
   };
 
+  const handleFollowUpQuestion = async (content: string, targetPersonaId: string) => {
+    if (content.trim()) {
+      await sendMessage(content, [targetPersonaId]);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -67,9 +74,12 @@ const Chat = () => {
           {/* API Key Input */}
           {!hasOpenAIKey() && <ApiKeyInput />}
 
-          {/* Persona Selection */}
+          {/* Persona Selection and Summary */}
           <div className="py-6 border-b">
-            <h2 className="text-lg font-medium mb-3">Choose perspectives:</h2>
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-medium">Choose perspectives:</h2>
+              <PersonaSummary />
+            </div>
             <div className="flex flex-wrap gap-3">
               {personas.map((persona) => (
                 <AIPerson
@@ -93,13 +103,17 @@ const Chat = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {messages.map((msg) => (
-                  <ConversationBubble
-                    key={msg.id}
-                    content={msg.content}
-                    sender={msg.sender}
-                    timestamp={msg.timestamp}
-                  />
+                {messages.map((msg, index) => (
+                  <div key={msg.id}>
+                    <ConversationBubble
+                      content={msg.content}
+                      sender={msg.sender}
+                      timestamp={msg.timestamp}
+                      showFollowUp={msg.sender !== 'user' && index === messages.length - 1}
+                      onFollowUp={handleFollowUpQuestion}
+                      isLoading={isLoading}
+                    />
+                  </div>
                 ))}
                 <div ref={messageEndRef} />
               </div>
